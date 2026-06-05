@@ -115,8 +115,11 @@ require([
     viewA = new MapView({
       container: "mapViewDiv",
       map: mapA,
-      center: [-3.532, 40.342], // Centrado en Rivas Vaciamadrid
-      zoom: 13,
+      center: [-3.532, 40.347], // Centrado en Rivas Vaciamadrid (desplazado un poco al norte)
+      zoom: 12.8,
+      constraints: {
+        snapToZoom: false
+      },
       popup: {
         defaultPopupTemplateEnabled: false,
         dockEnabled: true,
@@ -143,8 +146,11 @@ require([
 
     viewB = new MapView({
       map: mapB,
-      center: [-3.532, 40.342],
-      zoom: 13,
+      center: [-3.532, 40.347], // Desplazado un poco al norte
+      zoom: 12.8,
+      constraints: {
+        snapToZoom: false
+      },
       popup: {
         defaultPopupTemplateEnabled: false,
         dockEnabled: true,
