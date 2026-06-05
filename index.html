@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Rivas Elecciones | Cuadro de Mando Histórico</title>
+  
+  <!-- SEO Meta Tags -->
+  <meta name="description" content="Portal interactivo para el análisis y comparación de resultados electorales en Rivas Vaciamadrid por secciones censales y colegios electorales.">
+  <meta name="author" content="Antigravity Coding Assistant">
+  
+  <!-- Google Fonts & FontAwesome Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- ArcGIS API for JavaScript CSS (Tema Claro para integración corporativa) -->
+  <link rel="stylesheet" href="https://js.arcgis.com/4.29/esri/themes/light/main.css">
+  
+  <!-- Estilos del Proyecto -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body class="light-theme">
+
+  <!-- Contenedor Principal de la App -->
+  <div id="appContainer">
+    
+    <!-- Barra Superior de Control -->
+    <header class="main-header glass-panel">
+      <div class="logo-area">
+        <img src="Iconos/Logo_OITR.png" alt="OITR Rivas" class="oitr-logo" style="height: 78px; object-fit: contain; margin-right: 10px;">
+        <div>
+          <h1>RIVAS <span class="accent-text">ELECCIONES</span></h1>
+          <p class="subtitle">Portal de la Oficina de Información Territorial (OITR)</p>
+        </div>
+      </div>
+      
+      <!-- Controles de Selección de Datos -->
+      <div class="header-controls">
+        <!-- Ámbito Electoral -->
+        <div class="control-group">
+          <label for="scopeSelect"><i class="fa-solid fa-layer-group"></i> Ámbito</label>
+          <select id="scopeSelect">
+            <option value="generales" selected>Generales</option>
+            <option value="municipales">Municipales</option>
+            <option value="asamblea">Asamblea de Madrid</option>
+            <option value="europeas">Europeas</option>
+          </select>
+        </div>
+        
+        <!-- Contenedor de Selectores de Año (Cambian dinámicamente según el Ámbito y Modo) -->
+        <div class="years-selectors-container">
+          <!-- Año de Vista Única o Mapa Principal -->
+          <div class="control-group" id="yearSelectorGroup">
+            <label id="yearLabel" for="yearSelect"><i class="fa-solid fa-calendar-days"></i> Año</label>
+            <select id="yearSelect"></select>
+          </div>
+          
+          <!-- Año de Comparación (Solo visible en modo comparación) -->
+          <div class="control-group hidden" id="compareYearSelectorGroup">
+            <label for="compareYearSelect" id="compareYearLabel"><i class="fa-solid fa-code-compare"></i> Comparar con Año</label>
+            <select id="compareYearSelect"></select>
+          </div>
+        </div>
+
+        <!-- Botón del Modo Comparar -->
+        <button id="compareToggleBtn" class="btn btn-secondary">
+          <i class="fa-solid fa-circle-half-stroke"></i> <span>Comparar Años</span>
+        </button>
+      </div>
+    </header>
+    
+    <!-- Cuerpo de la Aplicación (Dashboard + Mapas) -->
+    <main class="app-body">
+      
+      <!-- Panel Lateral Izquierdo: Métricas y Resultados -->
+      <aside class="sidebar-panel glass-panel">
+        
+        <!-- Pestañas del Panel Lateral -->
+        <div class="sidebar-tabs">
+          <button class="tab-btn active" data-tab="general-stats">
+            <i class="fa-solid fa-chart-simple"></i> Global
+          </button>
+          <button class="tab-btn" data-tab="colegios-list">
+            <i class="fa-solid fa-school"></i> Colegios
+          </button>
+          <button class="tab-btn" data-tab="advanced-metrics">
+            <i class="fa-solid fa-brain"></i> Análisis Político
+          </button>
+        </div>
+        
+        <!-- Contenido de las Pestañas -->
+        <div class="tab-content-container">
+          
+          <!-- TAB 1: Estadísticas Generales -->
+          <section id="general-stats" class="tab-pane active">
+            <!-- Título Dinámico -->
+            <div class="pane-header">
+              <h2 id="electionTitle">Elecciones</h2>
+              <span id="totalVotesBadge" class="badge">-- votos</span>
+            </div>
+            
+            <!-- Grid de Indicadores Rápidos -->
+            <div class="stats-grid">
+              <!-- Tarjeta Participación -->
+              <div class="stat-card glass-card">
+                <div class="stat-icon circle-icon participation-color">
+                  <i class="fa-solid fa-user-check"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-label">Participación</span>
+                  <div class="stat-value-container">
+                    <span id="participationRate" class="stat-value">--%</span>
+                    <span id="participationDiff" class="stat-diff"></span>
+                  </div>
+                  <!-- Barra de progreso visual -->
+                  <div class="progress-bar-container">
+                    <div id="participationBar" class="progress-bar participation-bg" style="width: 0%"></div>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Tarjeta Censo -->
+              <div class="stat-card glass-card">
+                <div class="stat-icon circle-icon census-color">
+                  <i class="fa-solid fa-users"></i>
+                </div>
+                <div class="stat-info">
+                  <span class="stat-label">Censo Electoral</span>
+                  <span id="censusTotal" class="stat-value">--</span>
+                </div>
+              </div>
+              
+              <!-- Tarjeta Votos Blanco y Nulo -->
+              <div class="stat-card glass-card half-card">
+                <div class="stat-info">
+                  <span class="stat-label">Votos Blanco</span>
+                  <span id="blancoTotal" class="stat-subvalue">-- (--%)</span>
+                </div>
+              </div>
+              <div class="stat-card glass-card half-card">
+                <div class="stat-info">
+                  <span class="stat-label">Votos Nulos</span>
+                  <span id="nuloTotal" class="stat-subvalue">-- (--%)</span>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Balanza de Bloques Ideológicos -->
+            <div class="block-balance-section glass-card">
+              <h3>Balanza de Bloques</h3>
+              <div class="block-balance-meta">
+                <span class="left-block-label">Bloque Izquierda</span>
+                <span class="right-block-label">Bloque Derecha</span>
+              </div>
+              <div class="block-progress-container">
+                <div id="leftBlockBar" class="block-bar left-block-bg" style="width: 50%">--%</div>
+                <div id="rightBlockBar" class="block-bar right-block-bg" style="width: 50%">--%</div>
+              </div>
+              <div class="block-balance-totals">
+                <span id="leftBlockVotes">-- votos</span>
+                <span id="rightBlockVotes">-- votos</span>
+              </div>
+            </div>
+            
+            <!-- Resultados de los Partidos Políticos -->
+            <div class="results-list-section">
+              <h3>Resultados por Partido</h3>
+              <div id="partiesResultsContainer" class="parties-results-list">
+                <!-- Se poblará dinámicamente -->
+                <div class="loading-placeholder">Cargando resultados...</div>
+              </div>
+            </div>
+          </section>
+          
+          <!-- TAB 2: Listado de Colegios Electorales -->
+          <section id="colegios-list" class="tab-pane">
+            <div class="pane-header">
+              <h2>Colegios Electorales</h2>
+              <span class="badge badge-info">15 centros</span>
+            </div>
+            <p class="section-desc">Selecciona un colegio electoral para localizarlo en el mapa y ver sus estadísticas específicas.</p>
+            
+            <!-- Buscador de Colegios -->
+            <div class="search-box">
+              <i class="fa-solid fa-magnifying-glass"></i>
+              <input type="text" id="colegioSearchInput" placeholder="Buscar colegio electoral...">
+            </div>
+            
+            <div id="colegiosListContainer" class="colegios-list">
+              <!-- Se poblará dinámicamente -->
+            </div>
+          </section>
+          
+          <!-- TAB 3: Métricas Avanzadas (Políticos y Ciudadanos) -->
+          <section id="advanced-metrics" class="tab-pane">
+            <div class="pane-header">
+              <h2>Análisis Avanzado</h2>
+            </div>
+            
+            <!-- Tarjetas de Métricas Especiales -->
+            <div class="advanced-metrics-list">
+              
+              <!-- 1. Volatilidad de Secciones / Swing -->
+              <div class="advanced-card glass-card">
+                <div class="adv-card-header">
+                  <i class="fa-solid fa-shuffle swing-color-icon"></i>
+                  <h4>Fidelidad Geográfica</h4>
+                </div>
+                <p class="adv-desc">Este análisis compara los ganadores de cada sección censal entre el **Año en Vista** (Mapa Principal) y el **Año en Comparación** (Mapa Comparativo) para identificar el trasvase de partidos y la fidelidad del electorado.</p>
+                <div id="swingMetricResult">
+                  <!-- Se poblará dinámicamente en comparación o con datos históricos -->
+                  <div class="metric-placeholder-text">Activa el modo <strong>Comparar Años</strong> en la barra superior. Este panel comparará de forma automática el <strong>Año en Vista</strong> (Mapa Principal) con el <strong>Año en Comparación</strong> (Mapa Comparativo) para calcular el trasvase y volatilidad geográfica de las secciones censales.</div>
+                </div>
+              </div>
+              
+              <!-- 2. Ranking de Participación por Colegio -->
+              <div class="advanced-card glass-card">
+                <div class="adv-card-header">
+                  <i class="fa-solid fa-ranking-star rank-color-icon"></i>
+                  <h4>Ranking de Participación</h4>
+                </div>
+                <p class="adv-desc">Colegios electorales ordenados por su porcentaje de participación de mayor a menor.</p>
+                <ol id="participationRankingList" class="ranking-list">
+                  <!-- Se poblará dinámicamente -->
+                </ol>
+              </div>
+
+              <!-- 3. Hegemonía de Partidos -->
+              <div class="advanced-card glass-card">
+                <div class="adv-card-header">
+                  <i class="fa-solid fa-crown heg-color-icon"></i>
+                  <h4>Feudo Electoral</h4>
+                </div>
+                <p class="adv-desc">Identifica en qué colegio electoral obtiene cada partido su mayor porcentaje de voto.</p>
+                <div id="hegemonyList" class="hegemony-list">
+                  <!-- Se poblará dinámicamente -->
+                </div>
+              </div>
+            </div>
+          </section>
+          
+        </div>
+      </aside>
+      
+      <!-- Contenedor del Mapa (Ocupa el resto de la pantalla) -->
+      <section class="map-view-section">
+        
+        <!-- Indicador de Carga del Mapa -->
+        <div id="mapLoader" class="map-loader">
+          <div class="spinner"></div>
+          <span>Cargando datos cartográficos de Rivas...</span>
+        </div>
+
+        <!-- Modo Normal (Un solo mapa) -->
+        <div id="singleMapContainer" class="map-wrapper active">
+          <div id="mapViewDiv" class="map-view-element"></div>
+          <!-- Leyenda flotante sobre el mapa -->
+          <div id="mapLegend" class="map-overlay-legend glass-panel">
+            <h4>Partidos</h4>
+            <div id="legendItems"></div>
+          </div>
+        </div>
+        
+        <!-- Modo Comparativo (Dos mapas side-by-side) -->
+        <div id="compareMapContainer" class="map-wrapper">
+          <div class="split-map-pane">
+            <div class="split-map-title glass-panel" id="mapTitleA">Mapa Principal</div>
+            <div id="mapViewDivA" class="map-view-element"></div>
+          </div>
+          <div class="split-map-pane">
+            <div class="split-map-title glass-panel" id="mapTitleB">Mapa Comparativo</div>
+            <div id="mapViewDivB" class="map-view-element"></div>
+          </div>
+          <!-- Leyenda del modo comparación -->
+          <div id="mapLegendCompare" class="map-overlay-legend glass-panel">
+            <h4>Partidos</h4>
+            <div id="legendItemsCompare"></div>
+          </div>
+        </div>
+        
+      </section>
+      
+    </main>
+
+    <!-- Modal de Detalles por Colegio Electoral -->
+    <div id="colegioDetailModal" class="modal-overlay hidden">
+      <div class="modal-content glass-panel">
+        <button id="closeModalBtn" class="close-modal-btn">&times;</button>
+        
+        <div class="modal-layout">
+          <!-- Imagen del Colegio -->
+          <div class="modal-image-area" id="modalSchoolImage">
+            <!-- Cargado por JS -->
+          </div>
+          
+          <!-- Datos e Histograma del Colegio -->
+          <div class="modal-data-area">
+            <h2 id="modalSchoolName">Nombre del Colegio</h2>
+            <div id="modalSchoolAddress" class="modal-address-row"></div>
+            <div class="modal-meta-row">
+              <span id="modalSchoolSections"><i class="fa-solid fa-circle-nodes"></i> Secciones: </span>
+              <span id="modalSchoolCensus"><i class="fa-solid fa-users"></i> Censo: </span>
+              <span id="modalSchoolTurnout"><i class="fa-solid fa-user-check"></i> Participación: </span>
+            </div>
+            
+            <hr class="modal-divider">
+            
+            <h3>Resultados en este Centro</h3>
+            <div id="modalSchoolResults" class="modal-results-list">
+              <!-- Se poblará dinámicamente -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+  </div>
+
+  <!-- Scripts de la Aplicación -->
+  <!-- ArcGIS SDK JS -->
+  <script src="https://js.arcgis.com/4.29/"></script>
+  
+  <!-- Datos de Configuración del Proyecto -->
+  <script src="section_colegio_mapping.js"></script>
+  
+  <!-- Lógica de Control e Integración -->
+  <script src="app.js"></script>
+</body>
+</html>
