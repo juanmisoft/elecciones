@@ -473,6 +473,126 @@ body {
   letter-spacing: 0.5px;
 }
 
+/* Botón de alternar configuración en la balanza */
+.btn-icon-toggle {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-speed);
+  outline: none;
+}
+
+.btn-icon-toggle:hover {
+  background: rgba(227, 6, 19, 0.08);
+  color: var(--accent);
+}
+
+.btn-icon-toggle.active {
+  background: var(--accent);
+  color: #ffffff;
+  transform: rotate(90deg);
+}
+
+/* Configurador de Bloques */
+.blocks-configurator {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.05);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  max-height: 180px;
+  overflow-y: auto;
+  animation: fadeIn 0.3s ease;
+}
+
+.block-config-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.04);
+}
+
+.block-config-item:last-child {
+  border-bottom: none;
+}
+
+.block-config-party-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.block-config-party-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  object-fit: contain;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+}
+
+/* Selector Segmentado de 3 Estados (L / N / R) */
+.block-config-options {
+  display: flex;
+  background: rgba(0, 0, 0, 0.06);
+  border-radius: 20px;
+  padding: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.04);
+}
+
+.block-config-btn {
+  background: none;
+  border: none;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  outline: none;
+}
+
+/* Estado activo Izquierda (Left) */
+.block-config-btn.opt-left.active {
+  background: #e30613;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(227, 6, 19, 0.3);
+}
+
+/* Estado activo Neutro (None) */
+.block-config-btn.opt-none.active {
+  background: #64748b;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(100, 116, 139, 0.3);
+}
+
+/* Estado activo Derecha (Right) */
+.block-config-btn.opt-right.active {
+  background: #5bc035;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(91, 192, 53, 0.3);
+}
+
 .block-balance-meta {
   display: flex;
   justify-content: space-between;
@@ -1291,4 +1411,9 @@ body {
     border-right: none;
     border-bottom: 1.5px solid rgba(255, 255, 255, 0.1);
   }
+}
+
+/* Ocultar elementos genéricos */
+.hidden {
+  display: none !important;
 }

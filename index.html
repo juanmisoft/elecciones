@@ -51,16 +51,16 @@
         
         <!-- Contenedor de Selectores de Año (Cambian dinámicamente según el Ámbito y Modo) -->
         <div class="years-selectors-container">
-          <!-- Año de Vista Única o Mapa Principal -->
-          <div class="control-group" id="yearSelectorGroup">
-            <label id="yearLabel" for="yearSelect"><i class="fa-solid fa-calendar-days"></i> Año</label>
-            <select id="yearSelect"></select>
-          </div>
-          
           <!-- Año de Comparación (Solo visible en modo comparación) -->
           <div class="control-group hidden" id="compareYearSelectorGroup">
             <label for="compareYearSelect" id="compareYearLabel"><i class="fa-solid fa-code-compare"></i> Comparar con Año</label>
             <select id="compareYearSelect"></select>
+          </div>
+
+          <!-- Año de Vista Única o Mapa Principal -->
+          <div class="control-group" id="yearSelectorGroup">
+            <label id="yearLabel" for="yearSelect"><i class="fa-solid fa-calendar-days"></i> Año</label>
+            <select id="yearSelect"></select>
           </div>
         </div>
 
@@ -149,7 +149,18 @@
             
             <!-- Balanza de Bloques Ideológicos -->
             <div class="block-balance-section glass-card">
-              <h3>Balanza de Bloques</h3>
+              <div class="block-balance-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <h3>Balanza de Bloques</h3>
+                <button id="toggleBlocksConfigBtn" class="btn-icon-toggle" title="Configurar bloques y pactos">
+                  <i class="fa-solid fa-sliders"></i>
+                </button>
+              </div>
+              
+              <!-- Contenedor del Configurador Interactivo (oculto por defecto) -->
+              <div id="blocksConfigurator" class="blocks-configurator hidden">
+                <!-- Se poblará dinámicamente desde JS -->
+              </div>
+
               <div class="block-balance-meta">
                 <span class="left-block-label">Bloque Izquierda</span>
                 <span class="right-block-label">Bloque Derecha</span>

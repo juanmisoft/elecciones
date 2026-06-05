@@ -44,6 +44,15 @@ require([
   // Guardamos las referencias a los watchers de sincronización para poder activarlos/desactivarlos
   let syncWatchers = [];
 
+  // Estado del Configurador Dinámico de Bloques
+  let currentLeftBlock = [];
+  let currentRightBlock = [];
+  let currentAggregatedData = null;
+  let currentAggregatedDataOlder = null;
+  let currentConfigActive = null;
+  let currentConfigOlder = null;
+  let isComparisonModeActive = false;
+
   // Elementos del DOM
   const scopeSelect = document.getElementById("scopeSelect");
   const yearSelect = document.getElementById("yearSelect");
@@ -235,6 +244,16 @@ require([
         modal.classList.add("hidden");
       }
     });
+
+    // Toggle de la interfaz de la calculadora de pactos / configuración de bloques
+    const toggleBlocksConfigBtn = document.getElementById("toggleBlocksConfigBtn");
+    const blocksConfigurator = document.getElementById("blocksConfigurator");
+    if (toggleBlocksConfigBtn && blocksConfigurator) {
+      toggleBlocksConfigBtn.addEventListener("click", function() {
+        this.classList.toggle("active");
+        blocksConfigurator.classList.toggle("hidden");
+      });
+    }
   }
 
   // Cambia el selector de años dinámicamente según el ámbito y el modo comparación
@@ -793,20 +812,15 @@ require([
     document.getElementById("blancoTotal").textContent = `${aggregated.votosBlanco.toLocaleString()} (${pctBlanco}%)`;
     document.getElementById("nuloTotal").textContent = `${aggregated.votosNulo.toLocaleString()} (${pctNulo}%)`;
 
-    // 4. Bloques Ideológicos
-    const totalBlocks = aggregated.leftBlockVotes + aggregated.rightBlockVotes;
-    const leftPct = totalBlocks > 0 ? (aggregated.leftBlockVotes / totalBlocks * 100) : 50;
-    const rightPct = totalBlocks > 0 ? (aggregated.rightBlockVotes / totalBlocks * 100) : 50;
-    
-    const leftBar = document.getElementById("leftBlockBar");
-    const rightBar = document.getElementById("rightBlockBar");
-    leftBar.style.width = `${leftPct}%`;
-    leftBar.textContent = `${leftPct.toFixed(1)}%`;
-    rightBar.style.width = `${rightPct}%`;
-    rightBar.textContent = `${rightPct.toFixed(1)}%`;
-    
-    document.getElementById("leftBlockVotes").textContent = `${aggregated.leftBlockVotes.toLocaleString()} votos`;
-    document.getElementById("rightBlockVotes").textContent = `${aggregated.rightBlockVotes.toLocaleString()} votos`;
+    // 4. Bloques Ideológicos (Configuración interactiva dinámica)
+    currentLeftBlock = [...config.leftBlock];
+    currentRightBlock = [...config.rightBlock];
+    currentAggregatedData = aggregated;
+    currentConfigActive = config;
+    isComparisonModeActive = false;
+
+    setupBlocksConfigurator(config);
+    updateBlocksUIVisualization();
 
     // 5. Tabla de Resultados de Partidos
     renderPartiesResults(aggregated.partyVotes, config, null);
@@ -872,21 +886,17 @@ require([
     const pctNuloOlder = aggOlder.totalVotos > 0 ? ((aggOlder.votosNulo / aggOlder.totalVotos) * 100).toFixed(2) : "0.00";
     document.getElementById("nuloTotal").textContent = `${aggNewer.votosNulo.toLocaleString()} (${pctNuloNewer}%) | ant: ${pctNuloOlder}%`;
 
-    // Bloques
-    const totalBlocksNewer = aggNewer.leftBlockVotes + aggNewer.rightBlockVotes;
-    const leftPctNewer = totalBlocksNewer > 0 ? (aggNewer.leftBlockVotes / totalBlocksNewer * 100) : 50;
-    const rightPctNewer = totalBlocksNewer > 0 ? (aggNewer.rightBlockVotes / totalBlocksNewer * 100) : 50;
-    
-    const leftBar = document.getElementById("leftBlockBar");
-    const rightBar = document.getElementById("rightBlockBar");
-    leftBar.style.width = `${leftPctNewer}%`;
-    leftBar.textContent = `${leftPctNewer.toFixed(1)}%`;
-    rightBar.style.width = `${rightPctNewer}%`;
-    rightBar.textContent = `${rightPctNewer.toFixed(1)}%`;
-    
-    // Comparación votos absolutos bloques
-    document.getElementById("leftBlockVotes").textContent = `${aggNewer.leftBlockVotes.toLocaleString()} (anterior: ${aggOlder.leftBlockVotes.toLocaleString()})`;
-    document.getElementById("rightBlockVotes").textContent = `${aggNewer.rightBlockVotes.toLocaleString()} (anterior: ${aggOlder.rightBlockVotes.toLocaleString()})`;
+    // Bloques (Configuración interactiva dinámica en modo comparación)
+    currentLeftBlock = [...configNewer.leftBlock];
+    currentRightBlock = [...configNewer.rightBlock];
+    currentAggregatedData = aggNewer;
+    currentAggregatedDataOlder = aggOlder;
+    currentConfigActive = configNewer;
+    currentConfigOlder = configOlder;
+    isComparisonModeActive = true;
+
+    setupBlocksConfigurator(configNewer);
+    updateBlocksUIVisualization();
 
     // 3. Resultados Partidos (con cálculos de deltas: Newer vs Older)
     renderPartiesResults(aggNewer.partyVotes, configNewer, aggOlder.partyVotes);
@@ -1446,6 +1456,143 @@ require([
       }
     });
     return winners;
+  }
+
+  // ==========================================================================
+  // CONFIGURADOR INTERACTIVO DE BLOQUES (CALCULADORA DE PACTOS)
+  // ==========================================================================
+
+  // Inicializa el panel visual con los partidos y sus selectores
+  function setupBlocksConfigurator(config) {
+    const configurator = document.getElementById("blocksConfigurator");
+    if (!configurator) return;
+    configurator.innerHTML = "";
+
+    config.parties.forEach(p => {
+      const item = document.createElement("div");
+      item.className = "block-config-item";
+
+      const logoHtml = p.logo 
+        ? `<img class="block-config-party-logo" src="${p.logo}" alt="${p.name}">`
+        : `<div class="party-logo-fallback" style="background-color:${p.color}; width:20px; height:20px; font-size:8px; display:flex; align-items:center; justify-content:center; border-radius:50%; font-weight:700; color:#fff;">${p.name.substring(0,2)}</div>`;
+
+      // Determinar cuál es el bloque activo actual
+      let activeOpt = "none";
+      if (currentLeftBlock.includes(p.id)) {
+        activeOpt = "left";
+      } else if (currentRightBlock.includes(p.id)) {
+        activeOpt = "right";
+      }
+
+      item.innerHTML = `
+        <div class="block-config-party-info">
+          ${logoHtml}
+          <span>${p.name}</span>
+        </div>
+        <div class="block-config-options">
+          <button class="block-config-btn opt-left ${activeOpt === 'left' ? 'active' : ''}" data-party="${p.id}" data-opt="left" title="Sumar a Izquierda">I</button>
+          <button class="block-config-btn opt-none ${activeOpt === 'none' ? 'active' : ''}" data-party="${p.id}" data-opt="none" title="No sumar al bloque">N</button>
+          <button class="block-config-btn opt-right ${activeOpt === 'right' ? 'active' : ''}" data-party="${p.id}" data-opt="right" title="Sumar a Derecha">D</button>
+        </div>
+      `;
+
+      // Vincular eventos de clic para los botones del partido
+      const btns = item.querySelectorAll(".block-config-btn");
+      btns.forEach(btn => {
+        btn.addEventListener("click", function() {
+          const partyId = this.getAttribute("data-party");
+          const selectedOpt = this.getAttribute("data-opt");
+
+          // Quitar clases activas en este grupo de botones
+          btns.forEach(b => b.classList.remove("active"));
+          this.classList.add("active");
+
+          // Actualizar los arrays del estado
+          currentLeftBlock = currentLeftBlock.filter(id => id !== partyId);
+          currentRightBlock = currentRightBlock.filter(id => id !== partyId);
+
+          if (selectedOpt === "left") {
+            currentLeftBlock.push(partyId);
+          } else if (selectedOpt === "right") {
+            currentRightBlock.push(partyId);
+          }
+
+          // Recalcular y actualizar la balanza visual
+          updateBlocksUIVisualization();
+        });
+      });
+
+      configurator.appendChild(item);
+    });
+  }
+
+  // Calcula y actualiza la balanza visual
+  function updateBlocksUIVisualization() {
+    if (!currentAggregatedData || !currentConfigActive) return;
+
+    // 1. Calcular votos para el bloque principal (Newer o Único)
+    let leftVotesNewer = 0;
+    let rightVotesNewer = 0;
+
+    currentConfigActive.parties.forEach(p => {
+      const v = currentAggregatedData.partyVotes[p.id] || 0;
+      if (currentLeftBlock.includes(p.id)) {
+        leftVotesNewer += v;
+      } else if (currentRightBlock.includes(p.id)) {
+        rightVotesNewer += v;
+      }
+    });
+
+    let leftVotesOlder = 0;
+    let rightVotesOlder = 0;
+
+    if (isComparisonModeActive && currentAggregatedDataOlder && currentConfigOlder) {
+      // Mapear de forma inteligente sobre el año anterior (Older)
+      const olderLeftList = currentConfigOlder.leftBlock.filter(id => 
+        !currentRightBlock.includes(id) && (currentLeftBlock.includes(id) || !currentConfigActive.parties.some(p => p.id === id))
+      );
+      const olderRightList = currentConfigOlder.rightBlock.filter(id => 
+        !currentLeftBlock.includes(id) && (currentRightBlock.includes(id) || !currentConfigActive.parties.some(p => p.id === id))
+      );
+
+      currentConfigOlder.parties.forEach(p => {
+        const v = currentAggregatedDataOlder.partyVotes[p.id] || 0;
+        if (olderLeftList.includes(p.id)) {
+          leftVotesOlder += v;
+        } else if (olderRightList.includes(p.id)) {
+          rightVotesOlder += v;
+        }
+      });
+    }
+
+    // 2. Renderizar porcentajes y anchos de barra
+    const totalNewer = leftVotesNewer + rightVotesNewer;
+    const leftPct = totalNewer > 0 ? (leftVotesNewer / totalNewer * 100) : 50;
+    const rightPct = totalNewer > 0 ? (rightVotesNewer / totalNewer * 100) : 50;
+
+    const leftBar = document.getElementById("leftBlockBar");
+    const rightBar = document.getElementById("rightBlockBar");
+    
+    if (leftBar && rightBar) {
+      leftBar.style.width = `${leftPct}%`;
+      leftBar.textContent = `${leftPct.toFixed(1)}%`;
+      rightBar.style.width = `${rightPct}%`;
+      rightBar.textContent = `${rightPct.toFixed(1)}%`;
+    }
+
+    // 3. Renderizar votos absolutos
+    const leftVotesSpan = document.getElementById("leftBlockVotes");
+    const rightVotesSpan = document.getElementById("rightBlockVotes");
+
+    if (leftVotesSpan && rightVotesSpan) {
+      if (isComparisonModeActive) {
+        leftVotesSpan.textContent = `${leftVotesNewer.toLocaleString()} (anterior: ${leftVotesOlder.toLocaleString()})`;
+        rightVotesSpan.textContent = `${rightVotesNewer.toLocaleString()} (anterior: ${rightVotesOlder.toLocaleString()})`;
+      } else {
+        leftVotesSpan.textContent = `${leftVotesNewer.toLocaleString()} votos`;
+        rightVotesSpan.textContent = `${rightVotesNewer.toLocaleString()} votos`;
+      }
+    }
   }
 
   // ==========================================================================
